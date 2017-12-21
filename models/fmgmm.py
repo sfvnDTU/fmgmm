@@ -237,11 +237,12 @@ class GaussianMixtureWithForwardModel(BaseMixture):
             self.covariances_, self.covariance_type)
 
     def _estimate_log_prob(self, X):
-        # TODO: Add function _estimate_log_gaussian_prob_forward_part
+        # TODO: Smarter solution than repeating n_components times?
         return _estimate_log_gaussian_prob(
             self.y_sub, self.means_, self.precisions_cholesky_, self.covariance_type) \
-               + 1/self.n_components*_estimate_log_gaussian_prob_forward_part(X, self.y_sub,
-                                                                              self.forward_model, self.noise)
+               + 1/self.n_components*np.repeat(_estimate_log_gaussian_prob_forward_part(X, self.y_sub,
+                                                                              self.forward_model, self.noise),
+                                                      self.n_components, axis=1)
 
     def _estimate_subspace_repr(self, X, lr=None):
         """ Estimates subspace representation y_sub
@@ -327,7 +328,8 @@ class GaussianMixtureWithForwardModel(BaseMixture):
 def _estimate_log_gaussian_prob_forward_part(X, sub, forward_model, iso_noise_var):
     res = X - np.dot(sub,np.transpose(forward_model))
     exp_term_pr_samp = 1/iso_noise_var*np.sum(np.multiply(res,res), axis=1)
-    return -.5 * (X.shape[1] * np.log(2 * np.pi * iso_noise_var) + exp_term_pr_samp)
+    vals = -.5 * (X.shape[1] * np.log(2 * np.pi * iso_noise_var) + exp_term_pr_samp)
+    return np.expand_dims(vals, axis=1)
 
 def _calc_init_forward_model(X):
     """ Calculate forward model in case none is specified in initialization of object
