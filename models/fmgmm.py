@@ -191,7 +191,6 @@ class GaussianMixtureWithForwardModel(BaseMixture):
         resp : array-like, shape (n_samples, n_components)
         """
         n_samples, _ = X.shape
-        # TODO: New function _estimate_subspace_repr
         self.y_sub = self._estimate_subspace_repr(X)
 
         weights, means, covariances = _estimate_gaussian_parameters(
@@ -245,7 +244,7 @@ class GaussianMixtureWithForwardModel(BaseMixture):
 
     def _estimate_subspace_repr(self, X, lr=None):
         """ Estimates subspace representation y_sub
-            Both used in
+            Both used in m_step and initialization
 
             Parameters
             ----------
@@ -270,12 +269,19 @@ class GaussianMixtureWithForwardModel(BaseMixture):
                 lin_term = np.dot(X[n], self.forward_model)
                 for k in range(self.n_components):
                     # TODO: Only works for full matrix
-                    lin_term += np.exp(lr[n,k])*np.dot(self.means_[k,:], linalg.inv(self.covariances_[k,:,:]))
+                    if self.covariance_type == 'full':
+                        lin_term += np.exp(lr[n,k])*np.dot(self.means_[k,:], linalg.inv(self.covariances_[k,:,:]))
+                    else:
+                        raise NotImplementedError
 
                 # Square term part
                 sq_term = np.dot(np.transpose(self.forward_model), self.forward_model)
                 for k in range(self.n_components):
-                    sq_term += np.exp(lr[n,k])*linalg.inv(self.covariances_[k,:,:])
+                    # TODO: Only works for full matrix
+                    if self.covariance_type == 'full':
+                        sq_term += np.exp(lr[n,k])*linalg.inv(self.covariances_[k,:,:])
+                    else:
+                        raise NotImplementedError
 
                 # Calc subspace repr
                 y[n,] = np.dot(lin_term, linalg.inv(sq_term))
