@@ -154,9 +154,8 @@ class GaussianMixtureWithForwardModel(BaseMixture):
                              % self.covariance_type)
 
         if self.forward_model is not None:
-            _check_forward_model(self.forward_model, X)
+            self.forward_model = _check_forward_model(self.forward_model, X)
         else:
-            # TODO: New function _calc_init_forward_model
             self.forward_model = _calc_init_forward_model(X)
 
         if self.weights_init is not None:
@@ -331,18 +330,25 @@ def _estimate_log_gaussian_prob_forward_part(X, sub, forward_model, iso_noise_va
     vals = -.5 * (X.shape[1] * np.log(2 * np.pi * iso_noise_var) + exp_term_pr_samp)
     return np.expand_dims(vals, axis=1)
 
-def _calc_init_forward_model(X):
+def _calc_init_forward_model(X, n_pcacomps = 2):
     """ Calculate forward model in case none is specified in initialization of object
         Initial choice is a PCA with 2 components fitted to the data
     """
-    pca = PCA(n_components=2)
+    pca = PCA(n_components=n_pcacomps)
     pca.fit(X)
     return np.transpose(pca.components_)
 
 def _check_forward_model(forward_model, X):
-    if X.shape[1] != forward_model.shape[0]:
-        raise ValueError("The specified forward model does not have the same number of rows %i" 
-        "as data has columns %i " %(forward_model.shape[0], X.shape[1]))
-    if X.shape[1]< forward_model.shape[1]:
-        raise ValueError("The specified forward model maps to a larger space of dimension %i than the data %i"
-                         %(forward_model.shape[1], X.shape[1]))
+    if type(forward_model) == int:
+        # Calc forward model using PCA
+        forward_model_return = _calc_init_forward_model(X, n_pcacomps=forward_model)
+    else:
+        if X.shape[1] != forward_model.shape[0]:
+            raise ValueError("The specified forward model does not have the same number of rows %i" 
+                             "as data has columns %i " %(forward_model.shape[0], X.shape[1]))
+        if X.shape[1]< forward_model.shape[1]:
+            raise ValueError("The specified forward model maps to a larger space of dimension %i than the data %i"
+                             % (forward_model.shape[1], X.shape[1]))
+        else:
+            forward_model_return = forward_model
+    return forward_model_return
