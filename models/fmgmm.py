@@ -8,6 +8,9 @@ from sklearn.utils.validation import check_is_fitted
 
 
 class GaussianMixtureWithForwardModel(BaseMixture):
+    #TODO: Add tied-diag and tied-spherical
+    #TODO: Add zero-mean option
+    #TODO: Overload score_samples - currently doesnt work
     """Gaussian Mixture with a fixed forward model.
     Build on top of Scikit-learns Gaussian Mixture
     Representation of a Gaussian mixture model probability distribution.
