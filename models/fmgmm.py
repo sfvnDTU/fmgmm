@@ -187,6 +187,7 @@ class GaussianMixtureWithForwardModel(BaseMixture):
         return log_prob_norm
 
     def _initialize(self, X, resp):
+        # TODO: Initialize A * A.T
         """Initialization of the Gaussian mixture parameters.
         Parameters
         ----------
@@ -236,6 +237,7 @@ class GaussianMixtureWithForwardModel(BaseMixture):
         self.weights_ /= n_samples
         self.precisions_cholesky_ = _compute_precision_cholesky(
             self.covariances_, self.covariance_type)
+        self.noise = self._estimate_noise(X)
 
     def _estimate_log_prob(self, X):
         # TODO: Smarter solution than repeating n_components times?
@@ -244,6 +246,13 @@ class GaussianMixtureWithForwardModel(BaseMixture):
                + 1/self.n_components*np.repeat(_estimate_log_gaussian_prob_forward_part(X, self.y_sub,
                                                                               self.forward_model, self.noise),
                                                       self.n_components, axis=1)
+
+    def score_samples(self, X):
+        """ Calculates predictive likelihood on data X
+            - Marginalization over subspace repr and clustering
+            ...
+        """
+
 
     def _estimate_subspace_repr(self, X, lr=None):
         """ Estimates subspace representation y_sub
@@ -269,7 +278,7 @@ class GaussianMixtureWithForwardModel(BaseMixture):
             # Loop over observations
             for n in range(y.shape[0]):
                 # Linear term part
-                lin_term = np.dot(X[n], self.forward_model)
+                lin_term = 1.0/self.noise*np.dot(X[n], self.forward_model)
                 for k in range(self.n_components):
                     # TODO: Only works for full matrix
                     if self.covariance_type == 'full':
@@ -278,7 +287,7 @@ class GaussianMixtureWithForwardModel(BaseMixture):
                         raise NotImplementedError
 
                 # Square term part
-                sq_term = np.dot(np.transpose(self.forward_model), self.forward_model)
+                sq_term = 1.0/self.noise*np.dot(np.transpose(self.forward_model), self.forward_model)
                 for k in range(self.n_components):
                     # TODO: Only works for full matrix
                     if self.covariance_type == 'full':
@@ -290,6 +299,11 @@ class GaussianMixtureWithForwardModel(BaseMixture):
                 y[n,] = np.dot(lin_term, linalg.inv(sq_term))
 
             return y
+
+    def _estimate_noise(self, X):
+        """ ... """ # TODO: write nice description in noise estimator
+        residual = X - np.dot(self.y_sub, self.forward_model.T)
+        return np.sum(residual*residual)/(X.shape[0]*X.shape[1]*np.log(2*np.pi))
 
     def _get_parameters(self):
         return (self.weights_, self.means_, self.covariances_,
